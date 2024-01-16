@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Weather</string>
+    <string name="s_local_city">我的位置</string>
+    <string name="s_latitude">經度：</string>
+    <string name="s_longitude">緯度：</string>
+    <string name="s_latitude_yyy">yyy.yy</string>
+    <string name="s_longitude_xxx">xxx.xx</string>
+    <string name="s_temperature">0</string>
+    <string name="s_degree">o</string>
+    <string name="s_btn_query">查詢 36 小時天氣預測</string>
+</resources>
