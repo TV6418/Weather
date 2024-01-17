@@ -42,10 +42,16 @@ public class MainActivity extends AppCompatActivity {
     private String cityName;
     private String stateName;
 
+    private double maxT;
+    private double minT;
+
 
     TextView text_latitude;
     TextView text_longitude;
     TextView text_local_area;
+
+    TextView text_minT;
+    TextView text_maxT;
     Button btn_query;
 
     @Override
@@ -58,6 +64,9 @@ public class MainActivity extends AppCompatActivity {
         text_latitude = (TextView) findViewById(R.id.t_latitude);
         text_longitude = (TextView) findViewById(R.id.t_longitude);
         text_local_area = (TextView) findViewById(R.id.text_local_city);
+        text_minT = (TextView) findViewById(R.id.t_minT);
+        text_maxT = (TextView) findViewById(R.id.t_maxT);
+
         btn_query = (Button) findViewById(R.id.btn_query);
 
         //取得定位服務
@@ -70,111 +79,139 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private void initListener() {
-        btn_query.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Log.d("Query", "Query 開始");
+    private void queryWeather(){
 
+        Log.d("Query", "Query 開始");
 
-                //發動 API 查詢 天氣資料
-                //https://opendata.cwa.gov.tw/dist/opendata-swagger.html#/%E9%A0%90%E5%A0%B1/get_v1_rest_datastore_F_C0032_001
+        //發動 API 查詢 天氣資料
+        //https://opendata.cwa.gov.tw/dist/opendata-swagger.html#/%E9%A0%90%E5%A0%B1/get_v1_rest_datastore_F_C0032_001
 
-                // 1. 建立 WeatherRequest 物件
-                WeatherRequest weatherRequest = new WeatherRequest();
-                weatherRequest.setAuthorization("CWA-5172D0EA-F69E-4A47-9BB2-07F7E8836911");
-                weatherRequest.setFormat("JSON");
-                if(stateName != null){
-                    weatherRequest.setLocationName(stateName);
-                }else {
-                    Toast.makeText(MainActivity.this, "無法取得縣市名稱，預設查詢臺北市天氣", Toast.LENGTH_LONG).show();
-                    weatherRequest.setLocationName("臺北市");
-                }
+        // 1. 建立 WeatherRequest 物件
+        WeatherRequest weatherRequest = new WeatherRequest();
+        weatherRequest.setAuthorization("CWA-5172D0EA-F69E-4A47-9BB2-07F7E8836911");
+        weatherRequest.setFormat("JSON");
+        if(stateName != null){
+            weatherRequest.setLocationName(stateName);
+        }else {
+            Toast.makeText(MainActivity.this, "無法取得縣市名稱，預設查詢臺北市天氣", Toast.LENGTH_LONG).show();
+            weatherRequest.setLocationName("臺北市");
+        }
 //                weatherRequest.setElementName("Wx,PoP,CI,MaxT,MinT");
-                weatherRequest.setElementName("MaxT,MinT");
-                weatherRequest.setSort("time");
+        weatherRequest.setElementName("MaxT,MinT");
+        weatherRequest.setSort("time");
 
-                // 2. 將 WeatherRequest 物件使用 json HTTP GET 方式傳送至 API
-                WeatherApiTask weatherApiTask = new WeatherApiTask(weatherRequest, new WeatherApiTask.WeatherApiListener() {
-                    @Override
-                    public void onWeatherApiSuccess(String result) {
-                        if (result != null) {
-                            Log.d("Query", "Query 成功");
-                            Log.d("Query", result);
-                            // 在你的API請求成功的回調中使用以下代碼
-                            Gson gson = new Gson();
+        // 2. 將 WeatherRequest 物件使用 json HTTP GET 方式傳送至 API
+        WeatherApiTask weatherApiTask = new WeatherApiTask(weatherRequest, new WeatherApiTask.WeatherApiListener() {
+            @Override
+            public void onWeatherApiSuccess(String result) {
+                if (result != null) {
+                    Log.d("Query", "Query 成功");
+                    Log.d("Query", result);
+                    // 在你的API請求成功的回調中使用以下代碼
+                    Gson gson = new Gson();
 //                            WeatherResponse weatherResponse = gson.fromJson(result, WeatherResponse.class);
 //                            Result weatherResult = weatherResponse.getResult();
 //                            Records records = weatherResult.getRecords();
 
-                            JsonObject jsonObject = gson.fromJson(result, JsonObject.class);
+                    JsonObject jsonObject = gson.fromJson(result, JsonObject.class);
 
 // 獲取records對象
-                            JsonObject records = jsonObject.getAsJsonObject("records");
-
+                    JsonObject records = jsonObject.getAsJsonObject("records");
+                    if(records.getAsJsonArray("location") == null){
+                        Toast.makeText(MainActivity.this, "查無資料", Toast.LENGTH_LONG).show();
+                        return;
+                    }
 // 獲取MinT陣列
-                            JsonArray minTArray = records.getAsJsonArray("location")
-                                    .get(0) // 假設只有一個location元素
-                                    .getAsJsonObject()
-                                    .getAsJsonArray("weatherElement")
-                                    .get(0) // 假設MinT是第一個weatherElement元素
-                                    .getAsJsonObject()
-                                    .getAsJsonArray("time");
+                    JsonArray minTArray = records.getAsJsonArray("location")
+                            .get(0) // 假設只有一個location元素
+                            .getAsJsonObject()
+                            .getAsJsonArray("weatherElement")
+                            .get(0) // 假設MinT是第一個weatherElement元素
+                            .getAsJsonObject()
+                            .getAsJsonArray("time");
 
 // 獲取MaxT陣列
-                            JsonArray maxTArray = records.getAsJsonArray("location")
-                                    .get(0) // 假設只有一個location元素
-                                    .getAsJsonObject()
-                                    .getAsJsonArray("weatherElement")
-                                    .get(1) // 假設MaxT是第二個weatherElement元素
-                                    .getAsJsonObject()
-                                    .getAsJsonArray("time");
+                    JsonArray maxTArray = records.getAsJsonArray("location")
+                            .get(0) // 假設只有一個location元素
+                            .getAsJsonObject()
+                            .getAsJsonArray("weatherElement")
+                            .get(1) // 假設MaxT是第二個weatherElement元素
+                            .getAsJsonObject()
+                            .getAsJsonArray("time");
 
-// 現在你可以遍歷MinT和MaxT陣列，並取出最低溫度和最高溫度值
-                            for (int i = 0; i < minTArray.size(); i++) {
-                                JsonObject minTObject = minTArray.get(i).getAsJsonObject();
-                                String startTime = minTObject.get("startTime").getAsString();
-                                String endTime = minTObject.get("endTime").getAsString();
-                                JsonObject parameter = minTObject.getAsJsonObject("parameter");
-                                String minTemperature = parameter.get("parameterName").getAsString();
-                                String minTemperatureUnit = parameter.get("parameterUnit").getAsString();
+// 遍歷MinT和MaxT陣列，並取出最低溫度和最高溫度值
+                    for (int i = 0; i < minTArray.size(); i++) {
+                        JsonObject minTObject = minTArray.get(i).getAsJsonObject();
+                        String startTime = minTObject.get("startTime").getAsString();
+                        String endTime = minTObject.get("endTime").getAsString();
+                        JsonObject parameter = minTObject.getAsJsonObject("parameter");
+                        String minTemperature = parameter.get("parameterName").getAsString();
+                        String minTemperatureUnit = parameter.get("parameterUnit").getAsString();
 
-                                // 在這裡處理最低溫度數據
-                                System.out.println("MinT - Start Time: " + startTime);
-                                System.out.println("MinT - End Time: " + endTime);
-                                System.out.println("MinT - Temperature: " + minTemperature + " " + minTemperatureUnit);
-                            }
+                        // 在這裡處理最低溫度數據
+                        System.out.println("MinT - Start Time: " + startTime);
+                        System.out.println("MinT - End Time: " + endTime);
+                        System.out.println("MinT - Temperature: " + minTemperature + " " + minTemperatureUnit);
 
-                            for (int i = 0; i < maxTArray.size(); i++) {
-                                JsonObject maxTObject = maxTArray.get(i).getAsJsonObject();
-                                String startTime = maxTObject.get("startTime").getAsString();
-                                String endTime = maxTObject.get("endTime").getAsString();
-                                JsonObject parameter = maxTObject.getAsJsonObject("parameter");
-                                String maxTemperature = parameter.get("parameterName").getAsString();
-                                String maxTemperatureUnit = parameter.get("parameterUnit").getAsString();
-
-                                // 在這裡處理最高溫度數據
-                                System.out.println("MaxT - Start Time: " + startTime);
-                                System.out.println("MaxT - End Time: " + endTime);
-                                System.out.println("MaxT - Temperature: " + maxTemperature + " " + maxTemperatureUnit);
-                            }
-
-
-                        } else {
-                            Log.d("Query", "Query 失敗");
+                        //存入最低溫度
+                        if(minT > Double.parseDouble(minTemperature)){
+                            minT = Double.parseDouble(minTemperature);
+                        }else if(minT == 0){
+                            minT = Double.parseDouble(minTemperature);
                         }
+
+
                     }
 
-                    @Override
-                    public void onWeatherApiError(String errorMessage) {
-                        Log.d("Query", "Query 失敗");
+                    for (int i = 0; i < maxTArray.size(); i++) {
+                        JsonObject maxTObject = maxTArray.get(i).getAsJsonObject();
+                        String startTime = maxTObject.get("startTime").getAsString();
+                        String endTime = maxTObject.get("endTime").getAsString();
+                        JsonObject parameter = maxTObject.getAsJsonObject("parameter");
+                        String maxTemperature = parameter.get("parameterName").getAsString();
+                        String maxTemperatureUnit = parameter.get("parameterUnit").getAsString();
+
+                        // 在這裡處理最高溫度數據
+                        System.out.println("MaxT - Start Time: " + startTime);
+                        System.out.println("MaxT - End Time: " + endTime);
+                        System.out.println("MaxT - Temperature: " + maxTemperature + " " + maxTemperatureUnit);
+
+
+                        //存入最高溫度
+                        if(maxT < Double.parseDouble(maxTemperature)){
+                            maxT = Double.parseDouble(maxTemperature);
+                        }else if(maxT == 0){
+                            maxT = Double.parseDouble(maxTemperature);
+                        }
+
                     }
-                });
-                // 開始執行WeatherApiTask
-                weatherApiTask.execute();
+
+                    //更新最低及最高溫度
+                    text_minT.setText(String.format("%.1f", minT));
+                    text_maxT.setText(String.format("%.1f", maxT));
 
 
+                } else {
+                    Log.d("Query", "Query 失敗");
+                }
+            }
 
+            @Override
+            public void onWeatherApiError(String errorMessage) {
+                Log.d("Query", "Query 失敗");
+            }
+        });
+        // 開始執行WeatherApiTask
+        weatherApiTask.execute();
+    }
+
+
+    private void initListener() {
+        btn_query.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                queryWeather();
 
             }
         });
@@ -188,7 +225,7 @@ public class MainActivity extends AppCompatActivity {
                     new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION},
                     1);
         } else {
-//            getLastLocation();
+            //getLastLocation();
             createLocationRequest();
         }
     }
@@ -206,8 +243,8 @@ public class MainActivity extends AppCompatActivity {
                         if (location != null) {
                             double latitude = location.getLatitude();
                             double longitude = location.getLongitude();
-                            text_latitude.setText(String.format("%.2f", latitude));
-                            text_longitude.setText(String.format("%.2f", longitude));
+                            text_latitude.setText(String.format("%.1f", latitude));
+                            text_longitude.setText(String.format("%.1f", longitude));
 
                             // 逆地理編碼以獲取縣市名稱
 
@@ -226,7 +263,7 @@ public class MainActivity extends AppCompatActivity {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                         == PackageManager.PERMISSION_GRANTED) {
-                    getLastLocation();
+                    createLocationRequest();
                 }
             } else {
                 // 權限被拒絕
@@ -246,6 +283,7 @@ public class MainActivity extends AppCompatActivity {
 
         // 開始更新位置
         startLocationUpdates(locationRequest);
+        queryWeather();
     }
 
     private void startLocationUpdates(LocationRequest locationRequest) {
@@ -273,8 +311,8 @@ public class MainActivity extends AppCompatActivity {
         if (location != null) {
             double latitude = location.getLatitude();
             double longitude = location.getLongitude();
-            text_latitude.setText(String.format("%.2f", latitude));
-            text_longitude.setText(String.format("%.2f", longitude));
+            text_latitude.setText(String.format("%.1f", latitude));
+            text_longitude.setText(String.format("%.1f", longitude));
             // 逆地理編碼等後續操作
             Geocoder geocoder = new Geocoder(MainActivity.this, Locale.CHINESE);
             try {
